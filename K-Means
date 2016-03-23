@@ -1,0 +1,115 @@
+package SOM;
+import java.util.ArrayList;
+
+
+public class KMeans {
+	public static int[][] Lloyd(MapLayer map,int cluster){
+		/*
+		 * Initialisierung: Wähle k zufällige Mittelwerte (Means) aus dem Datensatz.
+			Zuordnung: Jedes Datenobjekt wird demjenigen Cluster zugeordnet, bei dem die Cluster-Varianz am wenigsten erhöht wird.
+			Aktualisieren: Berechne die Mittelpunkte der Cluster neu
+			
+			Weightvectors are used as means
+			
+			For better results, start at distinct bfc's
+		 */
+		int index=0;
+		int[] dim=map.GetDim();
+		int[][] ClusterMap=new int[dim[0]][dim[1]];
+		double[] cluster_wsum=new double[cluster];
+		int weight_dim=map.GetNeuron(0, 0).GetInpWeightsArray().length;
+		double[][] cluster_w=new double[cluster][weight_dim];
+		double temp=0;
+		double[] tempvec;
+		double min;
+		boolean change=true;
+		double[][] Means=new double[cluster][weight_dim];
+		Neuron[][] N=map.GetNeurons();
+		
+		//Initialize Cluster Map
+		for(int i=0;i<dim[0];i++){
+			for(int j=0;j<dim[1];j++){
+				ClusterMap[i][j]=cluster*2;
+			}
+		}
+		//Initializing with random means
+		for(int i=0;i<cluster;i++){
+			int randx=(int)Math.round(Math.random()*(dim[0]-1));
+			int randy=(int)Math.round(Math.random()*(dim[1]-1));
+			for(int j=0;j<weight_dim;j++){
+				Means[i][j]=N[randx][randy].GetInpWeightsArray()[j];
+			}
+		}
+		int iter=0;
+		while(change && iter<1000){
+			iter++;
+			change=false;
+			//assign each neuron  to a cluster 
+			for(int x=0;x<dim[0];x++){
+				for(int y=0;y<dim[1];y++){
+					temp=TB.distance(N[x][y].GetInpWeightsArray(),TB.To1D(Means,weight_dim,0));
+					min=temp;
+					index=0;
+					for(int i=1;i<cluster;i++){
+	
+						temp=TB.distance(N[x][y].GetInpWeightsArray(),TB.To1D(Means,weight_dim,i));
+						if(temp<min){
+							min=temp;
+							index=i;
+						}
+						
+					}
+					if(ClusterMap[x][y]!=index){
+						change=true;
+					}
+					ClusterMap[x][y]=index;
+				}
+			}
+			//Reset neuron count and cluster sum for each cluster
+			for(int i=0;i<cluster;i++){
+				cluster_wsum[i]=0;
+				for(int j=0;j<weight_dim;j++){
+					cluster_w[i][j]=0;
+					
+				}
+			}
+			//Calculate Cluster Means anew
+
+			for(int x=0;x<dim[0];x++){
+				for(int y=0;y<dim[1];y++){
+					/*
+					index=ClusterMap[x][y];
+					for(int j=0;j<weight_dim;j++){
+						cluster_wsum[index]+=N[x][y].GetInpWeightsArray()[j];
+						cluster_w[index][j]+=N[x][y].GetInpWeightsArray()[j];
+					}
+					*/
+					//Tryout:
+					/*
+					 * add the abs value of the weight vectors
+					 */
+					index=ClusterMap[x][y];
+					for(int j=0;j<weight_dim;j++){
+						cluster_w[index][j]+=N[x][y].GetInpWeightsArray()[j];
+					}
+					cluster_wsum[index]+=TB.abs(N[x][y].GetInpWeightsArray());
+					
+				}
+			}
+			for(int i=0;i<cluster;i++){
+				for(int j=0;j<weight_dim;j++){
+					if(cluster_wsum[i]==0){
+						System.out.println("No element found for cluster "+i);
+						break;
+					}
+					Means[i][j]=(1/cluster_wsum[i])*cluster_w[i][j];
+				}
+				//ShowArray(To1D(Means,weight_dim,i));
+			}
+
+		}
+		if(iter%100==0){System.out.println("Iteration: " + iter);}
+		System.out.println(iter);
+		return ClusterMap;
+	}
+}
